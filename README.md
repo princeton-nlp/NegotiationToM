@@ -71,50 +71,46 @@ bash craigslistbargain/exp_scripts/identifier/old/train_sl.sh
 PYTHONPATH=. python ../scripts/chat_to_scenarios.py --chats data/train-luis-post.json --scenarios data/train-scenarios.json
 PYTHONPATH=. python ../scripts/chat_to_scenarios.py --chats data/dev-luis-post.json --scenarios data/dev-scenarios.json
 ```
-- Train the RL model
+- Train the RL model 
+  > parameter <use_gpu>: `"--gpuid 0"` for gpu, `""` for cpu.
 ```shell
-bash exp_scripts/rl/train_a2c.sh "_0.001_${i}" "--gpuid 0" "${i}" "0.001" 2>&1 | tee logs/output_train_a2c_0.001_${i}.log &
+bash exp_scripts/rl/train_a2c.sh <exp_name> <use_gpu> <seed> <learning_rate> 
 ```
 ### Train a ToM model
 - Sample data
 ```shell
-bash exp_scripts/identifier/sample_data.sh "--gpuid 0" "${i}" 2>&1 | tee logs/sample_data_${i}.log &
-```
-- Explicit Model
-```shell
-bash exp_scripts/identifier/train_uttr_history_tom.sh "_${i}" "--gpuid 0" "${i}" 2>&1 | tee logs/uttr_history_tom_${i}.log &
+bash exp_scripts/identifier/sample_data.sh <use_gpu> <seed> 
 ```
 - Implicit Model
 ```shell
-bash exp_scripts/identifier/train_uttr_id_history_tom.sh "_${i}" "--gpuid 0" "${i}" 2>&1 | tee logs/uttr_id_history_tom_${i}.log &
+bash exp_scripts/identifier/train_uttr_history_tom.sh <exp_name> <use_gpu>
+```
+- Explicit Model
+```shell
+bash exp_scripts/identifier/train_uttr_id_history_tom.sh <exp_name> <use_gpu>
 ```
 
 ### Evaluate result of different model.
+> For evaluation process, gpu acceleration is unnecessary.
+> 
+> Parameter <1/beta> equal to $\frac{1}{beta}$ of tom inference process in our paper.
 - Rule Model
 ```shell
-bash exp_scripts/rl/eval_rule.sh "_${i}" "" "${i}" "1" "${CHECK_POINT}" 2>&1 | tee logs/output_eval_rule_${i}.log &
+bash exp_scripts/rl/eval_rule.sh <exp_name> "" <seed> <1/beta> "${CHECK_POINT}"
 ```
 - SL Model
 ```shell
-bash exp_scripts/rl/eval_sl.sh "_${i}" "" "${i}" "1" "${CHECK_POINT}" 2>&1 | tee logs/output_eval_sl_${i}.log &
+bash exp_scripts/rl/eval_sl.sh <exp_name> "" <seed> <1/beta> "${CHECK_POINT}" 
 ```
 - RL Model
 ```shell
-bash exp_scripts/rl/eval_rl.sh "_${i}" "" "${i}" "1" "${CHECK_POINT}" 2>&1 | tee logs/output_eval_rl_${i}.log &
+bash exp_scripts/rl/eval_rl.sh <exp_name> "" <seed> <1/beta> "${CHECK_POINT}" 
 ```  
-- Explicit ToM Model
-```shell
-i=0
-BETA=5
-CHECK_POINT="checkpoint/a2c_0.0001_0/model_reward-0.0865_e1850.pt"
-TOM_CHECK_POINT="checkpoint/uttr_history_tom_7_0/model_best.pt"
-bash exp_scripts/rl/eval_tom_noid.sh "_${BETA}_${i}" "" "${i}" "${BETA}" "${CHECK_POINT}" "${TOM_CHECK_POINT}"
-```
 - Implicit ToM Model
 ```shell
-i=0
-BETA=20
-CHECK_POINT="checkpoint/a2c_0.0001_0/model_reward-0.3006_e1800.pt"
-TOM_CHECK_POINT="checkpoint/uttr_id_tom_history_7_0/model_best.pt"
-bash exp_scripts/rl/eval_tom.sh "_${BETA}_${i}" "" "${i}" "${BETA}" "${CHECK_POINT}" "${TOM_CHECK_POINT}"
+bash exp_scripts/rl/eval_tom_noid.sh <exp_name> "" <seed> <1/beta>" "${CHECK_POINT}" "${TOM_CHECK_POINT}"
+```
+- Explicit ToM Model
+```shell
+bash exp_scripts/rl/eval_tom.sh <exp_name> "" <seed> <1/beta> "${CHECK_POINT}" "${TOM_CHECK_POINT}"
 ```
