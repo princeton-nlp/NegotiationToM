@@ -100,10 +100,6 @@ class NeuralSession(Session):
 
     # TODO: move this to preprocess?
     def convert_to_int(self):
-        # for i, turn in enumerate(self.dialogue.token_turns):
-        #     for curr_turns, stage in zip(self.dialogue.turns, ('encoding', 'decoding', 'target')):
-        #         if i >= len(curr_turns):
-        #             curr_turns.append(self.env.textint_map.text_to_int(turn, stage))
         self.dialogue.lf_to_int()
 
     def receive_quit(self):
@@ -122,21 +118,11 @@ class NeuralSession(Session):
         # e.g. sentences are here!!
         # when message is offer / accept / reject we do not have "real_uttr"
         # need to be added into state in your ways
-        # if "real_uttr" in event.metadata.keys():
-        #     print(">>> received sentence", event.metadata["real_uttr"])
 
         # Empty message
         if lf is None:
             return
 
-        # print 'receive:', utterance
-        # self.dialogue.add_utterance(event.agent, utterance)
-        # state = event.metadata.copy()
-        # state = {'enc_output': event.metadata['enc_output']}
-
-        # utterance_int = self.env.textint_map.text_to_int(utterance)
-        # state['action'] = utterance_int[0]
-        # print(event.agent, self.dialogue.agent)
         if lf.get('intent') is None:
             print('lf i is None: ', lf)
         if another_dia is None:
@@ -188,44 +174,31 @@ class NeuralSession(Session):
 
     def get_value(self, all_events):
         all_dia = []
-        # print('-'*5+'get_value:')
-        #
-        # print('in get value:')
         lt0 = last_time = time.time()
         time_list = None
         a_r = [self.acc_idx, self.rej_idx]
         qt = [self.quit_idx]
-        # print('alle', all_events)
         # all_events = [(tokens, uttr)]
         if all_events[0][0][0] in a_r:
-            # print('a_r', a_r)
-            # print('unknown: ', all_events, self.dialogue.token_turns[-1])
             price = None
             # get offer price
             # TODO: token_turns
-            # print('lfturns', self.dialogue.lf_turns[-1])
 
             if self.dialogue.lf_turns[-1].get('price') is not None:
 
                 price = self.builder.get_price_number(self.dialogue.lf_turns[-1].get('price') , self.kb)
-                # print('oprice', self.dialogue.lf_turns[-1].get('price'), price)
             values = []
             for e in all_events:
                 r = self.controller.get_margin_reward(price=price, agent=self.agent, is_agreed=e[0][0] == self.acc_idx)
                 values.append(r)
 
-            # print('value:', values, price)
-            # print('a/r:', values)
             return torch.tensor(values, device=next(self.critic.parameters()).device).view(-1,1)
 
-        # print('qt', qt) == 17
         if all_events[0][0][0] in qt:
             is_agreed = (self.acc_idx == self.dialogue.lf_turns[-1].get('intent'))
-            # print(is_agreed)
+
             values = [self.controller.get_margin_reward(price=None, agent=self.agent, is_agreed=is_agreed)]
-            # print('qt:', all_events, self.dialogue.token_turns[-1])
-            # print('value:', values)
-            # quit()
+
             return torch.tensor(values, device=next(self.critic.parameters()).device).view(-1,1)
 
         # Normal cases:
@@ -236,23 +209,15 @@ class NeuralSession(Session):
             attached_uttrs.append(u)
             attached_events.append({'intent': e[0], 'price': e[1], 'original_price': None})
 
-        # print('copy all dialogue: ', time.time() - last_time)
-        # print('for each step: ',end='')
-        # for i in range(len(time_list)):
-        #     print('{} '.format(np.sum(time_list[i])), end='')
-        # last_time = time.time()
+
         batch = self._create_batch(attached_events=(attached_events, self.dialogue.agent^1, attached_uttrs))
         # print('create batch: ', time.time() - last_time)
         last_time = time.time()
 
-        # get values
-        # print('event number:', len(all_events))
         rlbatch = RLBatch.from_raw(batch, None, None)
 
         values = self.critic(rlbatch.uttr, rlbatch.state)
-        # print('values', values)
-        # values = self.critic(e_intent, e_price, e_pmask, batch.encoder_dianum)
-        # print('inference: ', time.time() - last_time)
+
         return values
 
     def _to_real_price(self, price):
@@ -322,7 +287,6 @@ class NeuralSession(Session):
 
         all_value = [-np.inf for i in range(len(all_actions))]
 
-        # polisy_info = {'p1':[], 'p2':, 'p1_i':, }
         # tominf_p = p1*p2
         p1 = torch.zeros(len(all_actions))
         p2 = torch.zeros(len(all_actions))
@@ -349,7 +313,6 @@ class NeuralSession(Session):
 
             # From [0,1] to real price
 
-            # e = self._tokens_to_event(tmp_tokens, output_data)
             tmp_time = time.time()
             # get sigma(P(U3)*V(U3)), estimated reward of taking U2.
             info = self.controller.fake_step(self.agent, e, self.tom_session)
@@ -359,9 +322,7 @@ class NeuralSession(Session):
             evs[i] = (NeuralSession.tominf_beta * info).exp()
             tom_ev[i] = info
 
-        # print('old_evs', evs)
         evs = evs / evs.sum()
-        # print('evs', evs)
 
         for i, act in enumerate(all_actions):
             if output_data['policy'][0, act[0]].item() < 1e-7:
@@ -369,7 +330,6 @@ class NeuralSession(Session):
             tmp_tokens = list(act)
             # pi = pi1 * pi2
             ev = evs[i]
-            # ev = self.tominf_beta * ev
             tmp = output_data['policy'][0, act[0]]
             if act[1] is not None:
                 tmp = tmp * output_data['p_policy'][0, act[1]]
@@ -379,12 +339,7 @@ class NeuralSession(Session):
 
             tmp = tmp * ev
             tominf_p[i] = tmp.cpu().data.item()
-            # tmp = info.exp()*self.tom_alpha + output_data['policy'][0, act[0]]*(1-self.tom_alpha)
 
-            # choice the best action
-            # if best_action[1] is None or tmp.item() > best_action[1]:
-            #     best_action = (tmp_tokens, tmp.item())
-            # record all the actions
             tom_policy.append(tmp.item())
             tom_actions.append(tmp_tokens)
 
@@ -403,11 +358,6 @@ class NeuralSession(Session):
         final_action = torch.multinomial(torch.tensor(tom_policy, ), 1).item()
         tokens = list(tom_actions[final_action])
 
-        # print('-'*5+'tom debug info: ', len(self.dialogue.lf_turns))
-        # print('pi sum,', output_data['policy'].sum(), output_data['p_policy'].sum())
-        # print('pi', output_data['policy'], output_data['p_policy'])
-        # for s in print_list:
-        #     print('\t'+ str(s))
         self.dialogue.lf_to_int()
         # for s in self.dialogue.lfs:
         #     print(s)
@@ -431,14 +381,9 @@ class NeuralSession(Session):
             # Use semi-event here
             #   *For semi-events we only need to transform the price (keep intent as integer)
             # From [0,1] to real price
-            # e = self._tokens_to_event(act[:2], output_data, semi_event=True)
-            # e = self._tokens_to_event(act[:2], output_data)
 
             tmp_tokens = list(act)
             # pact -> price
-            # if tmp_tokens[1] is not None:
-            #     p_act = tmp_tokens[1]
-            #     tmp_tokens[1] = self._pact_to_price(tmp_tokens[1], output_data['last_prices'])
 
             tmp_lf = self._raw_token_to_lf(tmp_tokens)
             tmp_u, uid = self._lf_to_utterance(tmp_lf, as_tokens=True)
@@ -466,17 +411,7 @@ class NeuralSession(Session):
             print_list.append(
                 (self.env.textint_map.int_to_text([act[0]]), act, probs[i, 0].item(), values[i, 0].item()))
 
-        # if len(self.dialogue.lf_tokens) >= 2 and self.dialogue.lf_tokens[-2]['intent'] == 'offer':
-        #     print('-' * 5 + 'u3 debug info: ', len(self.dialogue.lf_tokens))
-        #     for i, s in enumerate(self.dialogue.lf_tokens):
-        #         print('\t[{}] {} {}\t'.format(self.dialogue.agents[i], s, self.dialogue.lfs[i]))
-        #     for s in print_list:
-        #         print('\t' + str(s))
-        # print('is fake: ',time.time()-tmp_time)
-
         info = {'values': values, 'probs': probs}
-        # print('sum of probs', probs.sum())
-        # info['values'] = values
 
         # For the min one
         minone = torch.zeros_like(probs, device=probs.device)
@@ -508,8 +443,6 @@ class NeuralSession(Session):
             acpt_range = self.acpt_range
         tokens, output_data = self.generate(is_fake=is_fake, temperature=temperature, acpt_range=acpt_range)
 
-        # if self.tom:
-        #     print('generate costs {} time.'.format(time.time() - last_time))
         if is_fake:
             tmp_time = time.time()
             return self.try_all_aa(tokens, output_data)
@@ -518,8 +451,6 @@ class NeuralSession(Session):
         if self.tom:
             tokens, policy_info = self.tom_inference(tokens, output_data)
             output_data.update(policy_info)
-        # if self.tom:
-        #     print('the whole tom staff costs {} times.'.format(time.time() - last_time))
 
         if tokens is None:
             return None
@@ -549,13 +480,10 @@ class NeuralSession(Session):
     def iter_batches(self):
         """Compute the logprob of each generated utterance.
         """
-        # print('------------dialouge ', self.agent)
-        # for i, t in enumerate(self.dialogue.token_turns):
-        #     print(self.dialogue.agents[i], t)
-        # print('')
+
         self.convert_to_int()
         batches = self.batcher.create_batch([self.dialogue])
-        # print('number of batches: ', len(batches))
+
         yield len(batches)
         for batch in batches:
             # TODO: this should be in batcher
@@ -618,7 +546,6 @@ class PytorchNeuralSession(NeuralSession):
             i = len(dias[0].lf_turns)
         extra = [r + [i / self.batcher.dia_num] + encoder_price[j][-2:] for j, r in enumerate(roles)]
         encoder_args['extra'] = extra
-        # encoder_args['dia_num'] = [i / self.dia_num] * len(encoder_intent)
 
         decoder_args = None
 
@@ -782,7 +709,6 @@ class PytorchNeuralSession(NeuralSession):
         return True
 
     def _output_to_tokens(self, data):
-        # print(data['intent'], data['price'])
         if isinstance(data['intent'], int):
             predictions = [data["intent"]]
         elif isinstance(data['intent'], torch.Tensor):
@@ -796,8 +722,5 @@ class PytorchNeuralSession(NeuralSession):
         else:
             predictions += [None]
 
-        # tokens = self.builder.build_target_tokens(predictions, self.kb)
-        # print('out_to_tokens', predictions, tokens)
-        # print('converting to tokens: {} -> {}'.format(predictions, tokens))
         return predictions
 

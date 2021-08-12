@@ -212,15 +212,6 @@ class Dialogue(object):
 
     def delete_last_utterance(self):
         # Always start in the middle and delete the utterance of another agent
-        # self.price_actions.pop()
-        # self.agents.pop()
-        # self.roles.pop()
-        # self.token_turns.pop()
-        # self.entities.pop()
-        # self.lfs.pop()
-        # self.tokens.pop()
-        # self.lf_turns.pop()
-        # self.modified.pop()
         self.agents.pop()
         self.roles.pop()
         self.token_turns.pop()
@@ -287,16 +278,9 @@ class Dialogue(object):
         else:
             new_turn = True
 
-        # if not new_turn:
-        #     print('FUck')
-
         utterance = self._insert_markers(agent, utterance, new_turn)
         entities = [x if is_entity(x) else None for x in utterance]
-        # for e in entities:
-        #     if e is not None:
-        #         if isinstance(e, CanonicalEntity):
-        #             print(type(e))
-        #         #print(type(e))
+
         if lf:
             pass
         else:
@@ -356,8 +340,6 @@ class Dialogue(object):
             self.tokens.append(self.textint_map.text_to_int(self.token_turns[i], 'encoding'))
 
             tmp_lf = self.lfs[-1]
-            # for k in lf:
-            #     tmp_lf[k] = self.mappings['lf_vocab'].to_ind(lf[k])
             if not isinstance(tmp_lf['intent'], int):
                 tmp_lf['intent'] = self.lfint_map.vocab.to_ind(tmp_lf['intent'])
 
@@ -366,11 +348,6 @@ class Dialogue(object):
             if self.hidden_price:
                 if tmp_lf.get('price') is not None:
                     last_price[self.agents[i]] = tmp_lf.get('price')
-
-                # Update intent price for agree-noprice
-                # if self.update_agree and tmp_lf['intent'] == self.mappings['lf_vocab'].word_to_ind['agree-noprice']:
-                #     agt = self.agents[i]
-                #     last_price[agt] = last_price[agt ^ 1]
 
                 if i >= len(self.agents):
                     print('error i{} >= len(agents){}'.format(i, len(self.agents)))
@@ -394,13 +371,6 @@ class Dialogue(object):
 
             self.rid.append(0 if self.roles[i] == 'seller' else 1)
 
-        # if self.need_output:
-        # print('token_turns weird: ')
-        # for i, t in enumerate(self.token_turns):
-        #     print(self.lfs[i]['price'], t)
-        # for i in self.msgs:
-        #     print(i)
-
     def convert_to_int(self):
         '''
         Used by DataGenerator, in SL part.
@@ -411,16 +381,6 @@ class Dialogue(object):
         self.kb_context_to_int()
         self.lf_to_int()
 
-        # if self.model in ['lf2lf', 'seq2seq']:
-        #     for turn in self.token_turns:
-        #         # turn is a list of tokens that an agent spoke on their turn
-        #         # self.turns starts out as [[], [], []], so
-        #         #   each portion is a list holding the tokens of either the
-        #         #   encoding portion, decoding portion, or the target portion
-        #         for portion, stage in zip(self.turns, ('encoding', 'decoding', 'target')):
-        #             portion.append(self.textint_map.text_to_int(turn, stage))
-        #
-        # elif self.model in ['tom']:
         for token, lf, pact in zip(self.tokens, self.lfs, self.price_actions):
             self.turns[0].append(lf)
             self.turns[1].append(token)
@@ -439,21 +399,18 @@ class Dialogue(object):
         * Should NOT be used in RL part.
         * pad_turns used after convert_to_int and in 'create_batches'
         '''
-        # self.msgs = self._pad_list(self.msgs, num_turns, '')
-        # self.token_turns = self._pad_list(self.token_turns, num_turns, '<pad>')
         if len(self.lfs) == 0:
             print('lfs is zero', self.is_int, self.modified)
             print('nums', num_turns, self.num_turns, self.num_lfs)
 
         # Need to pad lfs and turns by hand
         self._pad_list(self.turns[1], num_turns, [])
-        # pad_intent = self.lfint_map.vocab.to_ind(markers.PAD)
+
         # Default Settings
         pad_intent = 0
         pad_lfs = [{'intent': pad_intent, 'price': self.last_prices[0][-1]},
                    {'intent': pad_intent, 'price': self.last_prices[1][-1]}]
 
-        # self.token_turns = self._pad_list(self.token_turns, num_turns, ['<pad>'])
         self.tokens = self._pad_list(self.tokens, num_turns, [0])
 
         for i in range(len(self.lfs), num_turns):
@@ -520,7 +477,6 @@ class Preprocessor(object):
             for x in utterance:
                 if not is_entity(x):
                     ret.append(x)
-            # ret = [self.get_entity_form(x, 'canonical') if is_entity(x) else x for x in utterance]
             return ret
         else:
             if stage == 'encoding':
@@ -535,7 +491,6 @@ class Preprocessor(object):
                 else:
                     summary = utterance
 
-            # return [self.get_entity_form(x, self.entity_forms[stage]) if is_entity(x) else x for x in summary]
             ret = []
             for x in utterance:
                 if not is_entity(x):
@@ -621,7 +576,7 @@ class Preprocessor(object):
             data = e.metadata['price']
             if data is None:
                 return None
-            # price = PriceScaler._scale_price(kb, data)
+
             entity_tokens = [markers.OFFER]
             return entity_tokens
         elif e.action == 'quit':

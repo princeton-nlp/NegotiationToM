@@ -15,16 +15,6 @@ class IRNLG(object):
         self.gen_dic = {}
         with open(args.nlg_dir) as json_file:  
             self.gen_dic = json.load(json_file)
-        # self.gen_dic = {}
-        # for tmp in self.templates:
-        #     if not tmp["category"] in self.gen_dic.keys():
-        #         self.gen_dic[tmp["category"]] = {}
-        #     if not tmp["intent"] in self.gen_dic[tmp["category"]].keys():
-        #         self.gen_dic[tmp["category"]][tmp["intent"]] = {}
-        #     if tmp["role"] in self.gen_dic[tmp["category"]][tmp["intent"]].keys():
-        #         self.gen_dic[tmp["category"]][tmp["intent"]][tmp["role"]].append(tmp["template"])
-        #     else:
-        #         self.gen_dic[tmp["category"]][tmp["intent"]][tmp["role"]] = [tmp["template"]]
 
     def _add_strategy_in_uttr(self, uttr, stra):
         # c = self.env.vocab.size - 1 - self.price_strategy_label

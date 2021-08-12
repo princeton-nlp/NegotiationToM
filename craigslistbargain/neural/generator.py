@@ -27,21 +27,6 @@ class LFSampler(Sampler):
         self.price_actions = list(map(self.vocab.to_ind, ('counter', 'propose', 'offer', 'agree', 'disagree')))
         self.model_type = model_type
 
-        # for i,j in self.vocab.word_to_ind.items():
-        #     print(i,j)
-        # print('acc_rej:{}'.format(list(map(self.vocab.to_word, self.acc_or_rej))))
-        # print('offer:{}'.format(list(map(self.vocab.to_word, self.offer))))
-
-        # Draw the distribution of prices
-        # p_list = [self.vocab.to_word(i).canonical.value for i in self.price_list]
-        # p_list = sorted(p_list)
-        # print('plist:{}'.format(p_list))
-        # import seaborn as sns
-        # import matplotlib.pyplot as plt
-        # sns.set()
-        # sns.distplot(p_list, rug=True, bins=50)
-        # plt.show()
-
         self.policy_history = []
 
         # init rl actions
@@ -120,12 +105,6 @@ class LFSampler(Sampler):
             price = p_policy.item()
 
         # Use Normal distribution with constant variance as policy on price
-
-        # price = p_mean + p_logstd.exp()*0.1 * torch.randn_like(p_mean)
-        # price = p_mean + (1.1-temperature) * torch.randn_like(p_mean)
-        # price = p_mean
-        # print(torch.cat([price.view(-1,1), p_mean.view(-1,1), p_logstd.view(-1,1)], dim=1))
-        # price = price + LFSampler.var_for_price * torch.randn_like(price).abs()
 
         # Use rule for Supervised learning agent
         if acpt_range is not None:
